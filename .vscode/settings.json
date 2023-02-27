@@ -1,0 +1,8 @@
+{
+	"protoc": {
+		"options": [
+			"--proto_path=protos/v3",
+			"--proto_path=${workspaceFolder}/protos",
+		]
+	}
+}

@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package docs;
+
+service Docs {
+	rpc OpenDoc(OpenDocRequest) returns (OpenDocResponse) {}
+	rpc CloseDoc(DocIdentityRequest) returns (Empty) {}
+	rpc SubscribeDoc(DocIdentityRequest) returns (stream DocEvent) {}
+	rpc WriteDoc(DocWriteRequest) returns (Empty) {}
+	rpc CRCCheck(CRCCheckRequest) returns (CRCCheckResponse) {}
+	rpc RemoveDoc(DocIdentityRequest) returns (Empty) {}
+}
+
+message Empty {}
+
+message Insert {
+	int32 position = 1;
+	string content = 2;
+}
+message Remove {
+	int32 position = 1;
+	int32 size = 2;
+}
+message Replace {
+	string content = 1;
+}
+
+message OpenDocRequest {
+	int32 id = 1;
+	string userId = 2;
+	int64 sessionId = 3;
+}
+message OpenDocResponse {
+	
+	int32 id = 1;
+	string uid = 2;
+	string color = 3;
+	string createdDate = 4;
+	string lastEditing = 5;
+	string content = 6;
+	string title = 8;
+	uint64 changeId = 9;
+	repeated SheetEntity sheets = 10;
+}
+
+message SheetEntity {
+	int32 id = 1;
+	string uid = 2;
+	string color = 3;
+	string createdDate = 4;
+	string lastEditing = 5;
+	int32 projectId = 6;
+	string createdById = 8;
+	string title = 10;
+}
+
+message DocIdentityRequest {
+	int32 id = 1;
+	string userId = 2;
+	int64 sessionId = 3;
+}
+
+message DocWriteRequest {
+	int32 id = 1;
+	string userId = 2;
+	int64 sessionId = 6;
+	uint64 changeId = 7;
+	oneof change {
+		Insert insert = 3;
+		Remove remove = 4;
+		Replace replace = 5;
+	}
+}
+message CRCCheckRequest {
+	int32 id = 1;
+	uint32 crc = 2;
+}
+message CRCCheckResponse {
+	bool valid = 1;
+}
+
+
+// Events
+message DocEvent {
+	oneof event {
+		DocEventOpen open = 1;
+		DocEventClose close = 2;
+		DocEventWrite write = 3;
+		DocEventRemove remove = 5;
+		DocEventSubscribed subscribed = 6;
+	}
+}
+
+message DocEventSubscribed {
+	int32 id = 1;
+	int64 sessionId = 2;
+}
+message DocEventOpen {
+	int32 id = 2;
+	string userId = 3;
+	string userName = 4;
+}
+message DocEventClose {
+	int32 id = 1;
+	string userId = 2;
+}
+message DocEventWrite {
+	int32 id = 1;
+	string userId = 2;
+	oneof change {
+		Insert insert = 3;
+		Remove remove = 4;
+		Replace replace = 5;
+	}
+}
+message DocEventCursor {
+	int32 offset = 2;
+}
+message DocEventRemove {
+	int32 id = 1;
+	string userId = 2;
+}
