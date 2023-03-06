@@ -1,29 +1,17 @@
 syntax = "proto3";
 
+import "googleapis/google/api/empty.proto";
 package docs;
 
 service Docs {
 	rpc OpenDoc(OpenDocRequest) returns (OpenDocResponse) {}
-	rpc CloseDoc(DocIdentityRequest) returns (Empty) {}
+	rpc CloseDoc(DocIdentityRequest) returns (google.protobuf.Empty) {}
 	rpc SubscribeDoc(DocIdentityRequest) returns (stream DocEvent) {}
-	rpc WriteDoc(DocWriteRequest) returns (Empty) {}
+	rpc WriteDoc(DocWriteRequest) returns (google.protobuf.Empty) {}
 	rpc CRCCheck(CRCCheckRequest) returns (CRCCheckResponse) {}
-	rpc RemoveDoc(DocIdentityRequest) returns (Empty) {}
+	rpc RemoveDoc(DocIdentityRequest) returns (google.protobuf.Empty) {}
 }
 
-message Empty {}
-
-message Insert {
-	int32 position = 1;
-	string content = 2;
-}
-message Remove {
-	int32 position = 1;
-	int32 size = 2;
-}
-message Replace {
-	string content = 1;
-}
 
 message OpenDocRequest {
 	int32 id = 1;
@@ -80,7 +68,22 @@ message CRCCheckResponse {
 }
 
 
-// Events
+/// Doc write requests
+message Insert {
+	int32 position = 1;
+	string content = 2;
+}
+message Remove {
+	int32 position = 1;
+	int32 size = 2;
+}
+message Replace {
+	string content = 1;
+}
+
+////////////////////
+/// Events OUT	////
+////////////////////
 message DocEvent {
 	oneof event {
 		DocEventOpen open = 1;

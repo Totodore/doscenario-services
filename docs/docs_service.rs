@@ -38,7 +38,7 @@ impl docs_server::Docs for DocsService {
         &self,
         request: Request<DocIdentityRequest>,
     ) -> Result<Response<Self::SubscribeDocStream>, Status> {
-        let (tx, rx) = mpsc::channel(10);
+        let (tx, rx) = mpsc::channel(64);
         let data = request.into_inner();
         let user = queries::get_user(&data.user_id).await?;
 
@@ -104,7 +104,7 @@ impl docs_server::Docs for DocsService {
     async fn write_doc(
         &self,
         request: Request<DocWriteRequest>,
-    ) -> Result<Response<Empty>, Status> {
+    ) -> Result<Response<()>, Status> {
         let body = request.into_inner();
         if let Some(change) = body.change {
             self.doc_cache
@@ -124,13 +124,13 @@ impl docs_server::Docs for DocsService {
                 .await;
             }
         }
-        Ok(Response::new(Empty {}))
+        Ok(Response::new(()))
     }
 
     async fn close_doc(
         &self,
         request: Request<DocIdentityRequest>,
-    ) -> Result<Response<Empty>, Status> {
+    ) -> Result<Response<()>, Status> {
         let data = request.into_inner();
         if let Some(mut subs) = self.doc_streams.get_mut(&data.id) {
             subs.remove(&data.session_id);
@@ -148,13 +148,13 @@ impl docs_server::Docs for DocsService {
                 self.doc_streams.remove(&data.id);
             }
         }
-        Ok(Response::new(Empty {}))
+        Ok(Response::new(()))
     }
 
     async fn remove_doc(
         &self,
         request: Request<DocIdentityRequest>,
-    ) -> Result<Response<Empty>, Status> {
+    ) -> Result<Response<()>, Status> {
         let data = request.into_inner();
         if let Some(subs) = self.doc_streams.get(&data.id) {
             self.doc_streams
@@ -174,7 +174,7 @@ impl docs_server::Docs for DocsService {
             self.doc_streams.remove(&data.id);
             self.doc_cache.remove_doc(data.id).await?;
         }
-        Ok(Response::new(Empty {}))
+        Ok(Response::new(()))
     }
 
     async fn crc_check(

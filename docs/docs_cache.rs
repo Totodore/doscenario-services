@@ -3,7 +3,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::{database::POOL, docs::doc_write_request::Change};
+use crate::{docs::doc_write_request::Change};
 use crate::{queries, utils::RemoveRange};
 use dashmap::DashMap;
 use futures::future::join_all;
@@ -96,11 +96,7 @@ impl DocsCache {
     async fn apply_doc_changes(&self, id: i32) -> Result<(), Status> {
         let content = self.build_doc_changes(id).await?;
 
-        sqlx::query!("UPDATE document SET content = ? WHERE id = ?", content, id)
-            .fetch_one(POOL.get().unwrap())
-            .await
-            .map_err(|e| Status::data_loss(e.to_string()))?;
-
+		queries::set_doc_content(&id, &content).await?;
         Ok(())
     }
 

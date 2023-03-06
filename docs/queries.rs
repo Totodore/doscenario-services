@@ -60,3 +60,13 @@ pub async fn get_doc_sheets(doc_id: &i32) -> Result<Vec<SheetModel>, Status> {
     .map_err(|e| Status::data_loss(e.to_string()))?;
     Ok(sheets)
 }
+
+pub async fn set_doc_content(id: &i32, content: &String) -> Result<(), Status> {
+	sqlx::query("UPDATE document SET content = ? WHERE id = ?")
+		.bind(content)
+		.bind(id)
+		.fetch_one(POOL.get().unwrap())
+		.await
+		.map_err(|e| Status::data_loss(e.to_string()))?;
+	Ok(())
+}
