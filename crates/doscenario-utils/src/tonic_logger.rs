@@ -1,11 +1,8 @@
 use hyper::Body;
-use std::{
-    task::{Context, Poll},
-};
+use std::task::{Context, Poll};
 use tonic::body::BoxBody;
 use tower::layer::Layer;
 use tower::Service;
-
 #[derive(Debug, Clone)]
 pub struct TonicLogger<S> {
     inner: S,
@@ -30,11 +27,24 @@ where
         // for details on why this is necessary
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
+
         Box::pin(async move {
             // Do extra async work here...
             let response = inner.call(req).await?;
-            if !response.status().is_success() {
-                log::error!("Response status: {:?}", response);
+            let status = response
+                .headers()
+                .get("grpc-status")
+                .map(|s| s.to_str().unwrap_or_default())
+                .unwrap_or_default();
+
+            if status.is_empty() || status != "0" {
+                let message = response
+                    .headers()
+                    .get("grpc-message")
+                    .map(|s| s.to_str().unwrap_or_default())
+                    .unwrap_or_default();
+                let message = urlencoding::decode(message).unwrap_or(message.into());
+                log::error!("response failed: {} {}", status, message);
             }
             Ok(response)
         })
