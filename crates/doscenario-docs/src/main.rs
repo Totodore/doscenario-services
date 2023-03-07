@@ -7,7 +7,6 @@ use log::info;
 use logging_timer::time;
 use serde::{Deserialize, Serialize};
 use tonic::{transport::Server, Request, Status};
-use tonic_web::GrpcWebLayer;
 use tower_http::cors::{self, CorsLayer};
 use doscenario_utils::tonic_logger::TonicLoggerLayer;
 
@@ -74,19 +73,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("RUST_LOG", "info");
     env_logger::builder().init();
 
-    let addr = "0.0.0.0:8080".parse().unwrap();
-    let cors = CorsLayer::new()
-        .allow_origin(cors::Any)
-        .allow_headers(cors::Any);
+    let addr = "0.0.0.0:9090".parse().unwrap();
     let docs_service = DocsServer::with_interceptor(DocsService::new(), check_auth);
 
     load_mysql_pool().await;
 
     info!("Listening on {:#?}", addr);
     Server::builder()
-        .accept_http1(true)
-        .layer(cors)
-        .layer(GrpcWebLayer::new())
 		.layer(TonicLoggerLayer)
         .add_service(docs_service)
         .serve(addr)
