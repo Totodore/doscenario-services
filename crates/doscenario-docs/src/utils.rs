@@ -1,5 +1,7 @@
 use tokio::sync::Mutex;
+use tonic::Request;
 
+use crate::UserId;
 use crate::docs::{doc_event_write, doc_write_request};
 
 pub trait RemoveRange {
@@ -38,4 +40,10 @@ pub async fn get_snowflake() -> i64 {
             Mutex::new(SnowflakeIdGenerator::new(1, 1));
     }
     ID_GENERATOR.lock().await.real_time_generate()
+}
+
+
+pub fn unpack_req<T>(req: Request<T>) -> (T, UserId) {
+	let user_id = req.extensions().get::<UserId>().unwrap().clone();
+	(req.into_inner(), user_id)
 }

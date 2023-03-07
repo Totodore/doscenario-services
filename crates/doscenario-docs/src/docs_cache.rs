@@ -52,6 +52,7 @@ impl DocsCache {
         let delay = Duration::from_secs(2);
         loop {
             time::sleep(delay).await;
+			log::info!("Cache state: {:?}", self.doc_cache.len());
             join_all(
                 self.doc_cache
                     .iter_mut()
@@ -66,6 +67,7 @@ impl DocsCache {
         }
     }
 
+	/// Build the document content from the list of changes
     async fn build_doc_changes(&self, id: i32) -> Result<String, Status> {
         let mut content = queries::get_document_content(&id).await?;
         let entry = self
@@ -100,6 +102,8 @@ impl DocsCache {
         Ok(())
     }
 
+	/// Register a document to the cache and return the content and change id
+	/// If the document is already in the cache, it will return the cached content and change id
     pub async fn register_doc(&self, doc_id: i32) -> Result<(String, u64), Status> {
         if !self.doc_cache.contains_key(&doc_id) {
             self.doc_cache.insert(

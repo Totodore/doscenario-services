@@ -5,7 +5,7 @@ use crate::{
     docs::{doc_event::Event, *},
     docs_cache::DocsCache,
     queries,
-    utils::get_snowflake,
+    utils::{get_snowflake, unpack_req},
 };
 use dashmap::DashMap;
 use tokio::sync::mpsc::{self, Sender};
@@ -39,8 +39,8 @@ impl docs_server::Docs for DocsService {
         request: Request<DocIdentityRequest>,
     ) -> Result<Response<Self::SubscribeDocStream>, Status> {
         let (tx, rx) = mpsc::channel(64);
-        let data = request.into_inner();
-        let user = queries::get_user(&data.user_id).await?;
+		let (data, user_id) = unpack_req(request);
+        let user = queries::get_user(&user_id.0).await?;
 
         let session_id = get_snowflake().await;
 
@@ -49,7 +49,7 @@ impl docs_server::Docs for DocsService {
                 subs.values(),
                 Ok(DocEvent {
                     event: Some(doc_event::Event::Open(DocEventOpen {
-                        user_id: data.user_id.clone(),
+                        user_id: user_id.0.clone(),
                         user_name: user.name.clone(),
                         id: data.id,
                     })),
@@ -79,6 +79,9 @@ impl docs_server::Docs for DocsService {
         Ok(Response::new(ReceiverStream::new(rx)))
     }
 
+	/// Open a document, return the document info, sheets, content and change id
+	/// A cache entry with the doc is created if it doesn't exist
+	/// If the doc entry already exists the content is built from the changes
     async fn open_doc(
         &self,
         request: Request<OpenDocRequest>,
@@ -101,22 +104,43 @@ impl docs_server::Docs for DocsService {
         Ok(Response::new(res))
     }
 
+	/// Same thing as open_doc but create a doc first with a title
+	async fn create_doc(&self, request: Request<CreateDocRequest>) -> Result<Response<OpenDocResponse>, Status> {
+		let (data, user_id) = unpack_req(request);
+		let doc_id = queries::create_document(&data.title, &data.project_id, &user_id.0).await?;
+		let (doc, sheets, (content, change_id)) = tokio::try_join!(
+            queries::get_document(&doc_id),
+            queries::get_doc_sheets(&doc_id),
+            self.doc_cache.register_doc(doc_id)
+        ).map_err(|e| {
+			log::error!("Error opening doc: {:?}", e);
+			e
+		})?;
+
+        let mut res: OpenDocResponse = doc.into();
+        res.sheets = sheets.into_iter().map(|s| s.into()).collect();
+        res.content = content;
+        res.change_id = change_id;
+        Ok(Response::new(res))
+	}
+
+	/// Grpc call to write to a document
     async fn write_doc(
         &self,
         request: Request<DocWriteRequest>,
     ) -> Result<Response<()>, Status> {
-        let body = request.into_inner();
-        if let Some(change) = body.change {
+		let (data, user_id) = unpack_req(request);
+        if let Some(change) = data.change {
             self.doc_cache
-                .update_doc(body.session_id, body.id, change.clone(), body.change_id)
+                .update_doc(data.session_id, data.id, change.clone(), data.change_id)
                 .await;
-            if let Some(subs) = self.doc_streams.get(&body.id) {
+            if let Some(subs) = self.doc_streams.get(&data.id) {
                 broadcast_message!(
                     subs.values(),
                     Ok(DocEvent {
                         event: Some(doc_event::Event::Write(DocEventWrite {
-                            user_id: body.user_id.clone(),
-                            id: body.id,
+                            user_id: user_id.0.clone(),
+                            id: data.id,
                             change: Some(change.clone().into()),
                         })),
                     })
@@ -131,14 +155,14 @@ impl docs_server::Docs for DocsService {
         &self,
         request: Request<DocIdentityRequest>,
     ) -> Result<Response<()>, Status> {
-        let data = request.into_inner();
+		let (data, user_id) = unpack_req(request);
         if let Some(mut subs) = self.doc_streams.get_mut(&data.id) {
             subs.remove(&data.session_id);
             broadcast_message!(
                 subs.values(),
                 Ok(DocEvent {
                     event: Some(Event::Close(DocEventClose {
-                        user_id: data.user_id.clone(),
+                        user_id: user_id.0.clone(),
                         id: data.id,
                     })),
                 })
@@ -155,7 +179,7 @@ impl docs_server::Docs for DocsService {
         &self,
         request: Request<DocIdentityRequest>,
     ) -> Result<Response<()>, Status> {
-        let data = request.into_inner();
+		let (data, user_id) = unpack_req(request);
         if let Some(subs) = self.doc_streams.get(&data.id) {
             self.doc_streams
                 .get_mut(&data.id)
@@ -165,7 +189,7 @@ impl docs_server::Docs for DocsService {
                 subs.values(),
                 Ok(DocEvent {
                     event: Some(Event::Remove(DocEventRemove {
-                        user_id: data.user_id.clone(),
+                        user_id: user_id.0.clone(),
                         id: data.id,
                     })),
                 })

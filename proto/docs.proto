@@ -5,6 +5,7 @@ package docs;
 
 service Docs {
 	rpc OpenDoc(OpenDocRequest) returns (OpenDocResponse) {}
+	rpc CreateDoc(CreateDocRequest) returns (OpenDocResponse) {}
 	rpc CloseDoc(DocIdentityRequest) returns (google.protobuf.Empty) {}
 	rpc SubscribeDoc(DocIdentityRequest) returns (stream DocEvent) {}
 	rpc WriteDoc(DocWriteRequest) returns (google.protobuf.Empty) {}
@@ -15,8 +16,12 @@ service Docs {
 
 message OpenDocRequest {
 	int32 id = 1;
-	string userId = 2;
 	int64 sessionId = 3;
+}
+message CreateDocRequest {
+	int64 sessionId = 2;
+	string title = 3;
+	int32 projectId = 4;
 }
 message OpenDocResponse {
 	
@@ -44,13 +49,11 @@ message SheetEntity {
 
 message DocIdentityRequest {
 	int32 id = 1;
-	string userId = 2;
 	int64 sessionId = 3;
 }
 
 message DocWriteRequest {
 	int32 id = 1;
-	string userId = 2;
 	int64 sessionId = 6;
 	uint64 changeId = 7;
 	oneof change {

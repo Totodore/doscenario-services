@@ -4,11 +4,12 @@ use docs_service::DocsService;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use lazy_static::lazy_static;
 use log::info;
+use logging_timer::time;
 use serde::{Deserialize, Serialize};
 use tonic::{transport::Server, Request, Status};
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{self, CorsLayer};
-use logging_timer::time;
+use doscenario_utils::tonic_logger::TonicLoggerLayer;
 
 pub mod database;
 pub mod docs_cache;
@@ -26,9 +27,11 @@ pub mod docs {
 struct Claims {
     sub: String,
 }
+#[derive(Debug, Clone)]
+pub struct UserId(String);
 
-#[time("info")]
-fn check_auth(req: Request<()>) -> Result<Request<()>, Status> {
+#[time("debug")]
+fn check_auth(mut req: Request<()>) -> Result<Request<()>, Status> {
     lazy_static! {
         static ref PRIVATE_KEY: DecodingKey = DecodingKey::from_secret(
             std::env::var("PRIVATE_KEY")
@@ -36,7 +39,6 @@ fn check_auth(req: Request<()>) -> Result<Request<()>, Status> {
                 .as_bytes()
         );
     }
-    log::info!("Checking auth");
     let token = String::from_utf8(
         req.metadata()
             .get("authorization")
@@ -55,10 +57,14 @@ fn check_auth(req: Request<()>) -> Result<Request<()>, Status> {
                         e
                     )))
                 },
-                |_| Ok(req),
+                |c| {
+                    req.extensions_mut().insert(UserId(c.claims.sub));
+                    Ok(req)
+                },
             );
     res
 }
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -68,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("RUST_LOG", "info");
     env_logger::builder().init();
 
-	let addr = "0.0.0.0:8080".parse().unwrap();
+    let addr = "0.0.0.0:8080".parse().unwrap();
     let cors = CorsLayer::new()
         .allow_origin(cors::Any)
         .allow_headers(cors::Any);
@@ -78,9 +84,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Listening on {:#?}", addr);
     Server::builder()
-		.accept_http1(true)
+        .accept_http1(true)
         .layer(cors)
         .layer(GrpcWebLayer::new())
+		.layer(TonicLoggerLayer)
         .add_service(docs_service)
         .serve(addr)
         .await

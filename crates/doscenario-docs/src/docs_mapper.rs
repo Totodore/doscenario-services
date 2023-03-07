@@ -1,4 +1,4 @@
-use models::{document, sheet};
+use doscenario_models::{document, sheet};
 
 use crate::docs::{OpenDocResponse, SheetEntity};
 
