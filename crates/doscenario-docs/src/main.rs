@@ -7,14 +7,12 @@ use log::info;
 use logging_timer::time;
 use serde::{Deserialize, Serialize};
 use tonic::{transport::Server, Request, Status};
-use tower_http::cors::{self, CorsLayer};
 use doscenario_utils::tonic_logger::TonicLoggerLayer;
 
 pub mod database;
 pub mod docs_cache;
 pub mod docs_mapper;
 pub mod docs_service;
-pub mod macros;
 pub mod queries;
 pub mod utils;
 
@@ -46,7 +44,6 @@ fn check_auth(mut req: Request<()>) -> Result<Request<()>, Status> {
             .to_vec(),
     )
     .map_err(|_| Status::unauthenticated("Invalid auth token"))?;
-    log::debug!("{:?}", token);
     let res =
         jsonwebtoken::decode::<Claims>(&token, &PRIVATE_KEY, &Validation::new(Algorithm::HS256))
             .map_or_else(
@@ -70,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok();
 
     // Set default env logger to info
-    std::env::set_var("RUST_LOG", "info");
+    std::env::set_var("RUST_LOG", "doscenario_docs=debug,doscenario_models=debug");
     env_logger::builder().init();
 
     let addr = "0.0.0.0:9090".parse().unwrap();

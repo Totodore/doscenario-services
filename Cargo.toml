@@ -1,3 +1,2 @@
-workspace.members = [
-	"crates/*",
-]
+[workspace]
+members = ["crates/*"]

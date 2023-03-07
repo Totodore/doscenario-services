@@ -13,6 +13,26 @@ service Docs {
 	rpc RemoveDoc(DocIdentityRequest) returns (google.protobuf.Empty) {}
 }
 
+/// Doc write requests
+message Insert {
+	int32 position = 1;
+	string content = 2;
+}
+message Remove {
+	int32 position = 1;
+	int32 size = 2;
+}
+message Replace {
+	string content = 1;
+}
+message Change {
+	oneof change {
+		Insert insert = 3;
+		Remove remove = 4;
+		Replace replace = 5;
+	}
+}
+
 
 message OpenDocRequest {
 	int32 id = 1;
@@ -54,13 +74,9 @@ message DocIdentityRequest {
 
 message DocWriteRequest {
 	int32 id = 1;
+	repeated Change changes = 3;
 	int64 sessionId = 6;
 	uint64 changeId = 7;
-	oneof change {
-		Insert insert = 3;
-		Remove remove = 4;
-		Replace replace = 5;
-	}
 }
 message CRCCheckRequest {
 	int32 id = 1;
@@ -68,20 +84,6 @@ message CRCCheckRequest {
 }
 message CRCCheckResponse {
 	bool valid = 1;
-}
-
-
-/// Doc write requests
-message Insert {
-	int32 position = 1;
-	string content = 2;
-}
-message Remove {
-	int32 position = 1;
-	int32 size = 2;
-}
-message Replace {
-	string content = 1;
 }
 
 ////////////////////
@@ -105,21 +107,21 @@ message DocEventOpen {
 	int32 id = 2;
 	string userId = 3;
 	string userName = 4;
+	int64 sessionId = 5;
 }
 message DocEventClose {
 	int32 id = 1;
 	string userId = 2;
+	int64 sessionId = 3;
 }
 message DocEventWrite {
 	int32 id = 1;
 	string userId = 2;
-	oneof change {
-		Insert insert = 3;
-		Remove remove = 4;
-		Replace replace = 5;
-	}
+	int64 sessionId = 3;
+	repeated Change changes = 4;
 }
 message DocEventCursor {
+	int64 sessionId = 1;
 	int32 offset = 2;
 }
 message DocEventRemove {

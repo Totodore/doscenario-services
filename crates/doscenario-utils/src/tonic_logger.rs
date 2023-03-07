@@ -34,17 +34,17 @@ where
             let status = response
                 .headers()
                 .get("grpc-status")
-                .map(|s| s.to_str().unwrap_or_default())
-                .unwrap_or_default();
-
-            if status.is_empty() || status != "0" {
-                let message = response
-                    .headers()
-                    .get("grpc-message")
-                    .map(|s| s.to_str().unwrap_or_default())
-                    .unwrap_or_default();
-                let message = urlencoding::decode(message).unwrap_or(message.into());
-                log::error!("response failed: {} {}", status, message);
+                .map(|s| s.to_str().unwrap_or_default());
+            if let Some(status) = status {
+                if status != "0" {
+                    let message = response
+                        .headers()
+                        .get("grpc-message")
+                        .map(|s| s.to_str().unwrap_or_default())
+                        .unwrap_or_default();
+                    let message = urlencoding::decode(message).unwrap_or(message.into());
+                    log::error!("response failed: {} {}", status, message);
+                }
             }
             Ok(response)
         })

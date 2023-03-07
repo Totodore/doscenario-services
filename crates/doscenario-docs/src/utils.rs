@@ -2,7 +2,6 @@ use tokio::sync::Mutex;
 use tonic::Request;
 
 use crate::UserId;
-use crate::docs::{doc_event_write, doc_write_request};
 
 pub trait RemoveRange {
     fn to_remove_range(&mut self, start: usize, stop: usize) -> Self;
@@ -17,18 +16,6 @@ impl RemoveRange for String {
             }
         }
         rslt
-    }
-}
-
-impl Into<doc_event_write::Change> for doc_write_request::Change {
-    fn into(self) -> doc_event_write::Change {
-        match self {
-            doc_write_request::Change::Insert(insert) => doc_event_write::Change::Insert(insert),
-            doc_write_request::Change::Remove(remove) => doc_event_write::Change::Remove(remove),
-            doc_write_request::Change::Replace(replace) => {
-                doc_event_write::Change::Replace(replace)
-            }
-        }
     }
 }
 

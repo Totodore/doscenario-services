@@ -84,8 +84,17 @@ pub async fn set_doc_content(id: &i32, content: &String) -> Result<(), Status> {
     sqlx::query("UPDATE document SET content = ? WHERE id = ?")
         .bind(content)
         .bind(id)
-        .fetch_one(POOL.get().unwrap())
+        .execute(POOL.get().unwrap())
         .await
         .map_err(|e| Status::data_loss(e.to_string()))?;
     Ok(())
+}
+
+pub async fn delete_doc(id: &i32) -> Result<(), Status> {
+	sqlx::query("DELETE FROM document WHERE id = ?")
+		.bind(id)
+		.execute(POOL.get().unwrap())
+		.await
+		.map_err(|e| Status::data_loss(e.to_string()))?;
+	Ok(())
 }
